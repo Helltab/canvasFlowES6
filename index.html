@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title></title>
+</head>
+<body>
+<button onclick="reload()">重载</button>
+<button onclick="loadCanvas()">导入</button>
+<button onclick="save()">保存</button>
+<!---->
+<div id='canvasC'>
+</div>
+<script>
+  var loadCanvas, save, reload
+</script>
+<script type="module">
+  import CanvasTreeFlow from "./dist/src/index.js"
+  var id = 'test123'
+  let flow = new CanvasTreeFlow({
+    elem: 'canvasC',
+    title_font: '12px 黑体',
+    block_font: '10px 黑体',
+    onEdit(id, type, draw) {
+      draw("节点内容(" + id + ")")
+    },
+    onSelect: function (id, type) {
+      console.log("选择了", id, type)
+    },
+    onDel: function (id,type, draw) {
+      console.log("删除了" + id)
+      draw(true)
+    },
+    onAddNode: function (id, ifRoot, preId, draw) {
+      console.log("添加了节点" + id, ifRoot)
+      draw()
+    },
+    onAddBlock: function (id, draw) {
+      console.log("添加了内容块" + id)
+      draw()
+    },
+    onSave(data) {
+      console.log("保存\n", data)
+    },
+    bezier: true
+  })
+
+  reload = function () {
+    let arr = flow.getData()
+    flow.reload(arr)
+  }
+
+  loadCanvas = flow.loadCanvas
+  save = flow.saveCanvas
+</script>
+
+</body>
+</html>

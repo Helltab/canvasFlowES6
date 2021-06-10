@@ -1,0 +1,39 @@
+/*{
+  "compilerOptions": {
+    // 编译选项
+    "target": "ES6",
+    // 配置编译目标代码的版本标准
+    "module": "ES6",
+    "declaration": true,
+    "removeComments": false,
+    // 配置编译目标使用的模块化标准
+    "lib": [
+      "es2016",
+      "dom"
+    ],
+    "baseUrl": "./",
+    "outDir": "./dist/src"
+  },
+  "include": [
+    "./src"
+  ]
+}*/
+{
+  "compilerOptions": {
+    // 编译选项
+    "target": "es2016",
+    // 配置编译目标代码的版本标准
+    "module": "ES6",
+    "declaration": true,
+    "removeComments": false,
+    // 配置编译目标使用的模块化标准
+    "lib": [
+      "es2016",
+      "dom"
+    ],
+    "outDir": "./dist/src",
+  },
+  "include": [
+    "./src"
+  ]
+}

@@ -3,6 +3,7 @@ import {COLOR_VAR} from "./vars/GlobalVars.js";
 import {ImageType} from "./imageResource.js";
 
 export declare type OptionType = {
+
   /**
    *  画布容器 id, 一般定义一个 div
    */
@@ -85,6 +86,14 @@ export declare type OptionType = {
    */
   block_h?: number,
   /**
+   *  内容块间距
+   */
+  block_off?: number,
+  /**
+   *  节点间距
+   */
+  node_off?: number,
+  /**
    *  内容块宽度
    */
   block_w?: number,
@@ -132,7 +141,22 @@ export declare type OptionType = {
    *  连线线宽
    */
   conn_line_width?: 2,
-  images?: { [key in ImageType]: any}
+  title_color?: string,
+  add_block_btn_color?: string,
+  block_color?: string,
+  images?: { [key in ImageType]: any},
+  /**
+   * 是否显示地图
+   */
+  showMap?: boolean
+  /**
+   * 地图缩放
+   */
+  mapScale?: number
+  /**
+   * 地图指针缩放
+   */
+  pointerScale?: number
 }
 /**
  * 插件配置
@@ -154,12 +178,14 @@ const options: OptionType = {
   add_btn_h: 40,
   add_node_btn_h: 32,
   add_node_btn_w: 24,
-  title_h: 140,
+  title_h: 100,
   title_w: 280,
   block_h: 100,
   block_w: 280,
-  canv_h: 900,
-  canv_w: 1600,
+  block_off: 5,
+  node_off: 60,
+  canv_h: 800,
+  canv_w: 1500,
   icon_size: 20,
   title_font: '18px Arial',
   block_font: '16px Arial',
@@ -167,7 +193,12 @@ const options: OptionType = {
   mix_line: COLOR_VAR.MIX_LINE,
   serial_line: COLOR_VAR.SERIAL_LINE,
   active_line: COLOR_VAR.ACTIVE,
+  title_color: COLOR_VAR.TITLE_BG,
+  block_color: COLOR_VAR.BLOCK_BG,
+  add_block_btn_color: COLOR_VAR.ADD_BLOCK_BTN_BG,
   conn_line_width: 2,
-  images: null
+  images: null,
+  showMap: false,
+  mapScale: 0.16,
 }
 export default options

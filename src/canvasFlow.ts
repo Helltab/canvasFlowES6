@@ -1,34 +1,13 @@
-import LOCAL_KEY from "./localstore.js"
 import options, {OptionType} from "./options.js";
 import R from './imageResource.js'
-import {CanvasList} from "./objects/CanvasList.js";
 import {genUUID} from "./util/commonUtils.js";
-import {CANVAS_VARS} from "./vars/GlobalVars.js";
+import {CANVAS_VARS, COLOR_VAR, MAP} from "./vars/GlobalVars.js";
 
-import {
-  initContainerData, canvasRedraw, drawNode,
-  drawNodeByPosition, getData, loadCanvas, reload, saveCanvas
-} from "./util/canvasUtils.js";
-import {clearScreen, onClick, onDBClick, onMove} from "./eventHandler.js";
+import {canvasRedraw, drawNode, drawNodeList, getData, initContainerData, loadCanvas, reload, saveCanvas} from "./util/canvasUtils.js";
+import {onClick, onDBClick, onMove} from "./eventHandler.js";
 
 initContainerData()
 
-/**
- * 将持久化的数据进行重绘
- */
-function drawNodeList(nodes = JSON.parse(sessionStorage.getItem(LOCAL_KEY.DATA))) {
-  try {
-    if (!nodes || nodes.length < 0) return
-    clearScreen()
-    initContainerData()
-    nodes.forEach(node => {
-      drawNodeByPosition(node, nodes)
-    })
-    canvasRedraw()
-  } catch (e) {
-    console.error("数据加载失败")
-  }
-}
 
 /**
  * 主体类
@@ -44,6 +23,10 @@ class CanvasTreeFlow {
 
   constructor(args: OptionType) {
     Object.assign(options, args)
+    MAP.height = options.canv_h * options.mapScale
+    MAP.width = options.canv_w * options.mapScale
+    MAP.cur_height = MAP.height
+    MAP.cur_width = MAP.width
     this.elem = args.elem || 'canvasTreeFlow'
     this.initId = args.initId || genUUID()
     // 加载图片
@@ -53,19 +36,21 @@ class CanvasTreeFlow {
   loadR() {
     /**
      * 三种方式加载图片,
-     * 1. 如果自定义, 请传入 options.iamges  { [key in ImageType]: any}
+     * 1. 如果自定义, 请传入 options.images  { [key in ImageType]: any}
      * 2. 如果是 node 环境, 用 require 加载
      * 3. 如果是普通环境, 直接加载
      */
     let _require = null;
     try {
       _require = require
-    }catch (e){}
-    if(options.images) {
+      _require = true
+    } catch (e) {
+    }
+    if (options.images) {
       for (let k in R) {
         R[k].obj = options.images[k]
       }
-    } else if(_require) {
+    } else if (_require) {
       for (let k in R) {
         R[k].obj = new Image()
       }
@@ -73,21 +58,25 @@ class CanvasTreeFlow {
       R.add_node.obj.src = require("../static/img/btn_add_node.png")
       R.edit.obj.src = require("../static/img/btn_edit.png")
       R.del.obj.src = require("../static/img/btn_del.png")
+      R.rect_bg.obj.src = require("../static/img/texture_rect_bg.png")
+      R.canvas_bg.obj.src = require("../static/img/texture_canvas_bg.png")
     } else {
       for (let k in R) {
-        R[k].obj = new Image()
+        R[k].obj = new Image(R[k].width, R[k].height)
         R[k].obj.src = R[k].src
       }
     }
-    let num = 4, i = 0
+    let num = Object.keys(R).length, i = 0
     for (let k in R) {
       R[k].obj.onload = () => {
         i++
         if (i === num) {
           console.log('图片全部加载成功')
+          // 需要将序列化数据重绘
           if (options.initData) {
             this.init()
             drawNodeList(JSON.parse(options.initData))
+            // 新建
           } else {
             initContainerData()
             this.init()
@@ -107,11 +96,9 @@ class CanvasTreeFlow {
    * 4. 通过 display 的双缓冲转换显示到页面中
    */
   init() {
-
-
     CANVAS_VARS.canvBox = document.getElementById(this.elem);
-
-    CANVAS_VARS.canvBox.style.width = (options.canv_w - 208) + 'px'
+    this.createMap()
+    CANVAS_VARS.canvBox.style.width = (options.canv_w + 8) + 'px'
     CANVAS_VARS.canvBox.style.height = (options.canv_h + 8) + 'px'
     CANVAS_VARS.canvBox.style.overflow = 'auto'
     CANVAS_VARS.realCanv = document.createElement("canvas");
@@ -119,8 +106,9 @@ class CanvasTreeFlow {
     CANVAS_VARS.realCanv.width = options.canv_w;
     CANVAS_VARS.realCanv.height = options.canv_h;
     CANVAS_VARS.realCtx = CANVAS_VARS.realCanv.getContext("2d");
-    CANVAS_VARS.realCtx.fillStyle = "#b41f1f";
+    CANVAS_VARS.realCtx.fillStyle = COLOR_VAR.CANVAS_BG;
     CANVAS_VARS.realCtx.fillRect(0, 0, options.canv_w, options.canv_h);
+
     // 点击事件
     CANVAS_VARS.realCanv.addEventListener("mousedown", onClick);
 
@@ -138,14 +126,87 @@ class CanvasTreeFlow {
     CANVAS_VARS.canvBox.appendChild(CANVAS_VARS.realCanv)
     CANVAS_VARS.canvBox.appendChild(CANVAS_VARS.cacheCanv)
     CANVAS_VARS.cacheCtx = CANVAS_VARS.cacheCanv.getContext('2d')
+
     drawNode({id: this.initId});
     // display()
     canvasRedraw()
+
   }
 
+  /**
+   * 小地图
+   */
+  createMap() {
+    let map = document.createElement("div");
+    map.id = this.elem + "_map"
+    CANVAS_VARS.canvBox.appendChild(map)
+    map.style.width = (MAP.width + 20) + "px";
+    map.style.height = (MAP.height + 20) + "px";
+    map.style.border = "1px solid #1f2040ff";
+    map.style.backgroundColor = "#1f2040f2"
+    map.style.position = "absolute";
+    if (!options.showMap) {
+      map.style.display = "none";
+    }
+    map.style.top = (options.canv_h - MAP.height - 20) + 'px'
+    map.style.left = (options.canv_w - MAP.width - 20) + 'px'
+    let map_canv = document.createElement("canvas");
+    map_canv.id = this.elem + "_map_canvas"
+    map_canv.style.width = MAP.width + "px";
+    map_canv.style.height = MAP.height + "px";
+    map.appendChild(map_canv)
+    let map_pointer = document.createElement("div");
+    map_pointer.id = this.elem + "_map_pointer"
+    map_pointer.style.width = (MAP.width) + "px";
+    map_pointer.style.height = (MAP.height) + "px";
+    map_pointer.style.border = "1px solid #5cb3cc43";
+    map_pointer.style.backgroundColor = "#5cb3cc23"
+    map_pointer.style.position = "absolute";
+    map_pointer.style.top = "0";
+    map_pointer.style.left = "0";
+    let lastP = {x: 0, y: 0}
+    let lastOff = {left: 0, top: 0}
 
+    function onMoveFun(e) {
+      lastOff.left += e.clientX - lastP.x
+      lastOff.top += e.clientY - lastP.y
+      if (lastOff.left < 0) {
+        lastOff.left = 0
+      }
+      if (lastOff.left + MAP.cur_width > MAP.width) {
+        lastOff.left = MAP.width - MAP.cur_width
+      }
+      if (lastOff.top < 0) {
+        lastOff.top = 0
+      }
+      if (lastOff.top + MAP.cur_height > MAP.height) {
+        lastOff.top = MAP.height - MAP.cur_height
+      }
+      CANVAS_VARS.canvBox.scrollTop = lastOff.top / options.mapScale * (MAP.height / MAP.cur_height)
+      CANVAS_VARS.canvBox.scrollLeft = lastOff.left / options.mapScale * (MAP.width / MAP.cur_width)
+      e.target.style.left = lastOff.left + 'px'
+      e.target.style.top = lastOff.top + 'px'
+      lastP = {x: e.clientX, y: e.clientY}
+      e.preventDefault()
+    }
+
+    map_pointer.addEventListener("mousedown", function (e) {
+      lastP = {x: e.clientX, y: e.clientY}
+      map_pointer.addEventListener("mousemove", onMoveFun, false)
+    }, false)
+    map_pointer.addEventListener("mouseup", function (e) {
+      map_pointer.removeEventListener("mousemove", onMoveFun, false)
+    }, false)
+    map_pointer.addEventListener("mouseover", function (e) {
+      map_pointer.removeEventListener("mousemove", onMoveFun, false)
+    }, false)
+
+    map.appendChild(map_pointer)
+    CANVAS_VARS.mapCanv = map_canv
+    CANVAS_VARS.mapCanvCtx = map_canv.getContext('2d')
+    CANVAS_VARS.map_pointer = map_pointer
+  }
 }
-
 
 export default CanvasTreeFlow
 

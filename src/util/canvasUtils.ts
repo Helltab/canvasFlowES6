@@ -1,5 +1,5 @@
 import {CanvasList} from "../objects/CanvasList.js";
-import {CANVAS_VARS, COLOR_VAR, ELE_GROUP_VAR, RECT_TYPE} from "../vars/GlobalVars.js";
+import {CANVAS_VARS, COLOR_VAR, ELE_GROUP_VAR, getMapSize, MAP, RECT_TYPE} from "../vars/GlobalVars.js";
 import {arrRemove, genUUID, isType} from "./commonUtils.js";
 import options from "../options.js";
 import {clearScreen} from "../eventHandler.js";
@@ -11,6 +11,29 @@ import {CBlock} from "../objects/CBlock.js";
 import {CanvasEle} from "../objects/CavasEle.js";
 import {CPoint} from "../objects/CPoint.js";
 import {ActNode} from "../objects/ActNode.js";
+import R from "../imageResource.js";
+import LOCAL_KEY from "../localstore.js";
+
+/**
+ * 将持久化的数据进行重绘
+ */
+export function drawNodeList(nodes = JSON.parse(sessionStorage.getItem(LOCAL_KEY.DATA))) {
+  try {
+    if (!nodes || nodes.length < 0) return
+    clearScreen()
+    initContainerData()
+    nodes.forEach(node => {
+      drawNodeByPosition(node, nodes)
+    })
+    canvasRedraw()
+  } catch (e) {
+    console.error("数据加载失败")
+  }
+}
+
+export function reDrawNodeList() {
+  drawNodeList(JSON.parse(JSON.stringify(getData())))
+}
 
 /**
  * 初始化集合数据
@@ -21,19 +44,22 @@ export function initContainerData() {
   CANVAS_VARS.cnodeIdSet = new Set<string>()
   // 连接线的集合, 方便处理当前流程
   CANVAS_VARS.canvasLineArr = []
+  CANVAS_VARS.canvasDirectLine = new CanvasList<CLine>(null)
   CANVAS_VARS.canvasNodeArr = new CanvasList<CNode>(null)
   CANVAS_VARS.curElement = null
   CANVAS_VARS.actNode = new ActNode()
   // 节点列表设置回调, 每当节点被删除, 就需要将其下的节点适当上移
+  // fixme
   CANVAS_VARS.canvasNodeArr.setSpliceCallback(start => {
-    let node = CANVAS_VARS.canvasNodeArr[start]
-    CANVAS_VARS.canvasNodeArr.forEach(n => {
-      if (n.y > node.y) {
-        // 设置向上修正量, 当前节点的累计增高和下面节点最多能上升的距离中的最小值
-        let offY = Math.min(node.offHeight, n.y - n.preBlock.y + n.preBlock.height / 2)
-        adjustNode(n, 0, offY)
-      }
-    })
+    // let node = CANVAS_VARS.canvasNodeArr[start]
+    // CANVAS_VARS.canvasNodeArr.forEach(n => {
+    //   if (n.y > node.y) {
+    //     // 设置向上修正量, 当前节点的累计增高和下面节点最多能上升的距离中的最小值
+    //     let offY = Math.min(node.offHeight, n.y - n.preBlock.y + n.preBlock.height / 2)
+    //     console.log(offY)
+    //     // adjustNode(n, 0, offY)
+    //   }
+    // })
   })
 }
 
@@ -158,17 +184,6 @@ export function fitCanvasWidth(width: number, location_x: number) {
   }
 }
 
-/**
- * 调整画布高度
- */
-export function fitCanvasHeight(height: number, location_y: number) {
-  // 调整画布高度
-  if (height + location_y > CANVAS_VARS.realCanv.height - 30) {
-    CANVAS_VARS.realCanv.height += this.title.height + 100
-    CANVAS_VARS.cacheCanv.height = CANVAS_VARS.realCanv.height
-    CANVAS_VARS.cacheCanv.width = CANVAS_VARS.realCanv.width
-  }
-}
 
 /**
  * 重绘
@@ -177,6 +192,8 @@ export function canvasRedraw() {
   CANVAS_VARS.cacheCtx.clearRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height)
   CANVAS_VARS.cacheCtx.fillStyle = COLOR_VAR.CANVAS_BG;
   CANVAS_VARS.cacheCtx.fillRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height)
+  CANVAS_VARS.cacheCtx.fillStyle = CANVAS_VARS.cacheCtx.createPattern(R.canvas_bg.obj, "repeat");
+  CANVAS_VARS.cacheCtx.fillRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height);
   CANVAS_VARS.canvasEleArr.forEach(ele => {
     ele.draw()
   })
@@ -187,8 +204,13 @@ export function canvasRedraw() {
  * 显示画布
  */
 function display() {
+  CANVAS_VARS.mapCanvCtx.clearRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height)
+  let clientRect = CANVAS_VARS.map_pointer.getBoundingClientRect();
+  CANVAS_VARS.mapCanvCtx.drawImage(CANVAS_VARS.cacheCanv, 0, 0,
+    MAP.width,
+    MAP.height)
   CANVAS_VARS.realCtx.clearRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height)
-  CANVAS_VARS.realCtx.fillStyle = "#ddd"
+  // CANVAS_VARS.realCtx.fillStyle = "#ddd"
   CANVAS_VARS.realCtx.fillRect(0, 0, CANVAS_VARS.realCanv.width, CANVAS_VARS.realCanv.height)
   //双缓冲绘图, 将缓冲区的画面显示到页面
   CANVAS_VARS.realCtx.drawImage(CANVAS_VARS.cacheCanv, 0, 0)
@@ -203,7 +225,7 @@ export function pointInNode(x, y, curNode?: CNode) {
     if (x + 5 > node.x
       && x - 5 < node.x + node.width
       && y + 5 > node.y
-      && y - 5 < node.y + node.height) {
+      && y - 5 < node.y + node.getTotalHeight()) {
       return node
     }
   }
@@ -316,14 +338,6 @@ export function removeNode(node) {
   arrRemove(CANVAS_VARS.canvasNodeArr, node)
 }
 
-/**
- * 调整所有节点位置, 使其对齐
- * 1.如果右边的节点竖向之间相差距离过大, 需要调整
- * 2.如果右边节点最下方和最右方显示不完全, 需要增加画布大小
- */
-function fitAllNode() {
-
-}
 
 /**
  * 节点的前置, 如果不存在, 则添加一个根节点
@@ -347,10 +361,9 @@ export function drawNode(args: { id?: string, desc?: string, preBlock?: CRect })
     }
     let titleX: number = preBlock.x + preBlock.width + 80
     let titleY: number = preBlock.y
-
-    // 默认是连直线, 如果直线的末端已经有了节点, 就将末端下移到空地
-    while (pointInNode(titleX, titleY)) {
-      titleY += 60
+    // // 默认是连直线, 如果直线的末端已经有了节点, 就将末端下移到空地
+    while (pointInNode(titleX, titleY) || pointInNode(titleX, titleY + options.node_off)) {
+      titleY += options.node_off
     }
     // 先添加一个 title, 除了定位其他都继承前置
     let preNode = getNodeById(preBlock.nodeId)
@@ -391,10 +404,10 @@ export function drawNode(args: { id?: string, desc?: string, preBlock?: CRect })
       y: 20,
       width: options.title_w,
       height: options.title_h,
-      style: "#ffffff",
       radius: [0, 0, 10, 10],
     })
     node = new CNode({title: title, id: 'd5bc7bc0f4e64297be363d24842155e9'})
+    CANVAS_VARS.rootNode = node
   }
   // 激活当前 node
   CANVAS_VARS.actNode.drawActBox(node)
@@ -423,7 +436,6 @@ export function drawNodeByPosition({preBlockId, preNodeId, nodeId, title, blocks
     ...title,
     width: options.title_w,
     height: options.title_h,
-    style: "#ffffff",
   })
   let node = new CNode({title: cTitle, preBlock: preBlock, id: nodeId})
   // 添加内容块
@@ -442,6 +454,20 @@ export function drawNodeByPosition({preBlockId, preNodeId, nodeId, title, blocks
       setDisableBlock(preBlock)
     }
     // 设置连接线, 从 root 出来是完全并行, 从其他 title 出来是局部并行, 从 block 出来是串行
+    let offY = 0;
+    // 默认是连直线, 如果直线的末端已经有了节点, 就将末端下移到空地
+    while (pointInNode(node.x, preBlock.y + offY, node)
+      || pointInNode(node.x, preBlock.y + offY + options.node_off, node)
+      ) {
+      offY += options.node_off
+    }
+    offY = node.y - preBlock.y -offY
+    CANVAS_VARS.canvasEleArr.forEach(ele => {
+      if (ele.nodeId === node.id) {
+        ele.y -= offY
+      }
+    })
+    title = node.title
     node.setFromLine(new CLine({
       style: title.ifRoot ? options.parallel_line : (preBlock.constructor === CTitle ? options.mix_line : options.serial_line),
       fromP: new CPoint(preBlock.x + preBlock.width, preBlock.y + preBlock.height / 2),
@@ -449,6 +475,7 @@ export function drawNodeByPosition({preBlockId, preNodeId, nodeId, title, blocks
       lineWidth: options.conn_line_width,
       preEle: preBlock
     }))
+    // node.setFromLine()
   }
 }
 

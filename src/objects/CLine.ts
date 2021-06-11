@@ -3,9 +3,11 @@ import options from "../options.js";
 import {addCEle} from "../util/canvasUtils.js";
 import {CANVAS_VARS} from "../vars/GlobalVars.js";
 import {CPoint} from "./CPoint.js";
+import {CNode} from "./CNode";
 
 export class CLine extends CanvasEle {
   preEle: CanvasEle;
+  toNode?: CNode;
   style: any;
   idStyle: any;
   actStyle: any;
@@ -22,6 +24,7 @@ export class CLine extends CanvasEle {
     preEle: CanvasEle,
     bezier?: boolean,
     id?: string
+    toNode?: CNode
   }) {
     super({parent: null, nodeId: null, id: args.id});
     this.fromP = args.fromP
@@ -31,6 +34,7 @@ export class CLine extends CanvasEle {
     this.lineWidth = args.lineWidth
     this.preEle = args.preEle
     this.bezier = args.bezier
+    this.toNode = args.toNode
     this.actStyle = options.active_line
   }
 
@@ -64,5 +68,22 @@ export class CLine extends CanvasEle {
       lineWidth: this.lineWidth,
       preEle: this,
     }).draw()
+  }
+
+  /**
+   * 判断两根线是否交叉
+   * 最简单判断, y'0>y0 y'1<y1
+   * 1. 起始比别人高, 落点比别人低; 返回 1 (要调整自己到最后
+   * 2. 起始比别人低, 落点比别人高; 返回 2 (要调整比自己低的所有 node 往下移动
+   * 3. 其他; 返回 0
+   */
+  crossWith(line:CLine):1|2|0 {
+    if (line.fromP.y < this.fromP.y &&  line.toP.y > this.toP.y) {
+      return 1;
+    }
+    if (line.fromP.y > this.fromP.y &&  line.toP.y < this.toP.y) {
+      return 2;
+    }
+    return 0;
   }
 }

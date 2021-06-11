@@ -1,10 +1,10 @@
 import {CanvasList} from "./CanvasList.js";
 import {arrRemove, genUUID, isType} from "../util/commonUtils.js";
-import {addCEle, adjustNode, canvasRedraw, drawNode, getEleById, getNextNodeByBlockId, getNextNodeByNode, getNodeById, getRectType, getSubEles, pointInNode, registNode, removeNode} from "../util/canvasUtils.js";
+import {addCEle, canvasRedraw, drawNode, enableBlock, getEleById, getNextNodeByBlockId, getNextNodeByNode, getNodeById, getRectType, getSubEles, pointInNode, reDrawNodeList, registNode, removeNode} from "../util/canvasUtils.js";
 import options from "../options.js";
 import R from "../imageResource.js";
 import {afterEvent} from "../eventHandler.js";
-import {CANVAS_VARS, COLOR_VAR, ELE_GROUP_VAR, RECT_TYPE} from "../vars/GlobalVars.js";
+import {CANVAS_VARS, ELE_GROUP_VAR, MAP} from "../vars/GlobalVars.js";
 import {CTitle} from "./CTitle.js";
 import {CRect} from "./CRect.js";
 import {CLine} from "./CLine.js";
@@ -112,23 +112,28 @@ export class CNode {
 
   widthModify(x: number, width: number) {
     // 调整画布宽度
-    if (width + x > CANVAS_VARS.realCanv.width - 30) {
-      CANVAS_VARS.realCanv.width += width + 100
+    if (width + x > CANVAS_VARS.realCanv.width - 300) {
+      CANVAS_VARS.realCanv.width += width + 300
       CANVAS_VARS.cacheCanv.height = CANVAS_VARS.realCanv.height
       CANVAS_VARS.cacheCanv.width = CANVAS_VARS.realCanv.width
       canvasRedraw()
-      CANVAS_VARS.realCanv.scrollIntoView()
+      CANVAS_VARS.canvBox.scrollLeft = 99999
+      // CANVAS_VARS.realCanv.scrollIntoView()
     }
+    MAP.cur_width = MAP.width * MAP.width / CANVAS_VARS.cacheCanv.width / options.mapScale
+    CANVAS_VARS.map_pointer.style.width = MAP.cur_width + "px"
   }
 
 
   heightModify(y: number, height: number) {
     // 调整画布高度
-    if (height + y > CANVAS_VARS.realCanv.height - 30) {
-      CANVAS_VARS.realCanv.height += this.title.height + 100
+    if (height + y > CANVAS_VARS.realCanv.height - 300) {
+      CANVAS_VARS.realCanv.height += this.title.height + 300
       CANVAS_VARS.cacheCanv.height = CANVAS_VARS.realCanv.height
       CANVAS_VARS.cacheCanv.width = CANVAS_VARS.realCanv.width
     }
+    MAP.cur_height = MAP.height * MAP.height / CANVAS_VARS.cacheCanv.height / options.mapScale
+    CANVAS_VARS.map_pointer.style.height = MAP.cur_height + "px"
 
   }
 
@@ -146,18 +151,18 @@ export class CNode {
     this.blockList = new CanvasList<CRect>(b => {
       if (b === title) return
       // 将 node 的高度往下扩展
-      this.height += b.height + 5
+      this.height = this.getTotalHeight()
     })
     this.blockList.setSpliceCallback(start => {
       let disabledBlock: CBlock = this.blockList[start]
       this.blockList.forEach(b => {
-        if (b !== disabledBlock && b.disableBlock === disabledBlock) {
+        if (!b.nextNode && b !== disabledBlock && b.disableBlock === disabledBlock) {
           this.setAddNodeBtn(b)
           CANVAS_VARS.disableBlockArr.splice(CANVAS_VARS.disableBlockArr.indexOf(b.disableBlock), 1)
           b.disableBlock = null
         }
       })
-      this.height -= options.block_h + 5
+      this.height = this.getTotalHeight()
       // CANVAS_VARS.actNode.drawActBox(this)
     })
 
@@ -205,7 +210,7 @@ export class CNode {
     let preBlock = this.getPreBlock()
     let addBtnX = preBlock.x
     let addBtnY = preBlock.y + preBlock.height
-    let addBtnH = 40
+    let addBtnH = options.add_btn_h
     let addBtnW = preBlock.width
     if (this.addBtn) {
       this.title.removeGroupEles(ELE_GROUP_VAR.ADD_BTN)
@@ -214,7 +219,7 @@ export class CNode {
       // 将所有 y 大于当前的并且 x 大于等于当前的都往下移动
       for (const node of CANVAS_VARS.canvasNodeArr) {
         if (node !== this && node.y > this.y && node.x >= this.x) {
-          let offY = this.title.height
+          let offY = this.title.height + options.node_off
           this.offHeight += offY
           CANVAS_VARS.canvasEleArr.forEach(ele => {
             if (ele.nodeId === node.id && ele.y !== undefined) {
@@ -237,7 +242,7 @@ export class CNode {
       width: addBtnW,
       height: addBtnH,
       group: ELE_GROUP_VAR.ADD_BTN,
-      style: this.title.style,
+      style: options.add_block_btn_color,
       radius: [10, 10, 0, 0]
     })
     new CImg({
@@ -268,11 +273,11 @@ export class CNode {
       parent: rect,
       nodeId: this.id,
       group: ELE_GROUP_VAR.ADD_NODE_BTN,
-      x: rect.x + rect.width + 2,
+      x: rect.x + rect.width - 2,
       y: rect.y + rect.height / 2 - 14,
       width: options.add_node_btn_w,
       height: options.add_node_btn_h,
-      style: '#fff',
+      style: rect.style,
       // strokeStyle: COLOR_VAR.LINK_BTN_BORDER,
       radius: [5, 0, 0, 5]
     })
@@ -284,7 +289,7 @@ export class CNode {
       group: ELE_GROUP_VAR.ADD_NODE_BTN,
       width: options.add_node_btn_w - 2,
       height: options.add_node_btn_h - 2,
-      style: '#fff',
+      style: rect.style,
       radius: [5, 0, 0, 5]
     }).addClick(() => {
       if (options.onAddNode) {
@@ -306,7 +311,7 @@ export class CNode {
       nodeId: this.id,
       group: ELE_GROUP_VAR.ADD_NODE_BTN,
       img: R.add_node.obj,
-      width: options.icon_size ,
+      width: options.icon_size,
       height: options.icon_size,
     })
   }
@@ -338,12 +343,11 @@ export class CNode {
       if (options.onDel) {
         options.onDel(rect.id, getRectType(rect), (res) => {
           if (res !== -1) {
+            let actNodeId = !isType(rect, CTitle) ? rect.nodeId : CANVAS_VARS.rootNode.id
             this.delRect(rect)
-            if (!isType(rect, CTitle)) {
-              setTimeout(() => {
-                CANVAS_VARS.actNode.drawActBox(getNodeById(rect.nodeId))
-              }, 0)
-            }
+            setTimeout(() => {
+              CANVAS_VARS.actNode.drawActBox(getNodeById(actNodeId))
+            }, 0)
           }
           afterEvent()
         })
@@ -394,6 +398,8 @@ export class CNode {
       });
       arrRemove(CANVAS_VARS.canvasNodeArr, node)
     })
+
+    arrRemove(CANVAS_VARS.canvasNodeArr, rootNode)
   }
 
   /**
@@ -414,57 +420,50 @@ export class CNode {
       CANVAS_VARS.actNode.drawActBox(curNode.preNode)
       // 如果是局部并行节点, 直接删除所有
       // 注意, 此处的 preBlock 必定是不为空的
-      // if (preBlock.constructor === CBlock) {
-      //     this.delNode(curNode)
-      //     enableBlock(curNode.preBlock)
-      //     return
-      //     // 如果是完全并行节点, 只删除该节点和其下的串行子节点
-      // } else {
-      // 如果存在串行子节点
-      if (nextNode) {
-        let flag = true
-        for (let node of CANVAS_VARS.canvasNodeArr) {
-          // 如果下面有 node, 则需要将下一个 node 的线延长, 没有的话, 就将右边的所有元素向左平移
-          if (curNode !== node && node.x > freeX - 20 && node.x < freeX + 20) {
-            flag = false
-            break;
+      if (preBlock.constructor === CBlock) {
+        this.delNode(curNode)
+        enableBlock(curNode.preBlock)
+        reDrawNodeList()
+        return
+        // 如果是完全并行节点, 只删除该节点和其下的串行子节点
+      } else {
+        // 如果存在串行子节点
+        if (nextNode) {
+          let flag = true
+          for (let node of CANVAS_VARS.canvasNodeArr) {
+            // 如果下面有 node, 则需要将下一个 node 的线延长, 没有的话, 就将右边的所有元素向左平移
+            if (curNode !== node && node.x > freeX - 20 && node.x < freeX + 20) {
+              flag = false
+              break;
+            }
           }
-        }
-        if (flag) {
-          // 递归调整横向位置和连线
-          this.getSubNode(nextNode, null).forEach(node => {
-            CANVAS_VARS.canvasEleArr.filter(x => x.nodeId === node.id).forEach(ele => {
-              let eleNode = getNodeById(ele.nodeId)
-              if (ele.x) ele.x -= (curNode.width + eleNode.fromLine.toP.x - eleNode.fromLine.fromP.x)
+          if (flag) {
+            // 递归调整横向位置和连线
+            this.getSubNode(nextNode, null).forEach(node => {
+              CANVAS_VARS.canvasEleArr.filter(x => x.nodeId === node.id).forEach(ele => {
+                let eleNode = getNodeById(ele.nodeId)
+                if (ele.x) ele.x -= (curNode.width + eleNode.fromLine.toP.x - eleNode.fromLine.fromP.x)
+              })
+              node.setFromLine(null, node.preNode === curNode ? curNode.preBlock : null)
             })
-            node.setFromLine(null, node.preNode === curNode ? curNode.preBlock : null)
-          })
-        } else {
-          // 将下一个节点连到上一个节点
-          nextNode.setFromLine(null, curNode.preBlock)
+          } else {
+            // 将下一个节点连到上一个节点
+            nextNode.setFromLine(null, curNode.preBlock)
+          }
+          // 调整连接
+          nextNode.preNode = curNode.preNode
+          nextNode.preNodeId = curNode.preNodeId
+          nextNode.preBlock = curNode.preNode.title
+          nextNode.preBlockId = curNode.preBlockId
+          curNode.preNode.title.nextNode = nextNode
+          curNode.preNodeId
+        } else {//如果不存在子节点, 直接删除前置的 nextNode
+          curNode.preNode.title.nextNode = null
+          curNode.preNode.setAddNodeBtn(curNode.preBlock)
+          enableBlock(curNode.preBlock)
         }
-        // 调整连接
-        nextNode.preNode = curNode.preNode
-        nextNode.preNodeId = curNode.preNodeId
-        nextNode.preBlock = curNode.preNode.title
-        nextNode.preBlockId = curNode.preBlockId
-        curNode.preNode.title.nextNode = nextNode
-        curNode.preNodeId
-      } else {//如果不存在子节点, 直接删除前置的 nextNode, 并添加前置节点的连接按钮
-        curNode.preNode.title.nextNode = null
-        curNode.preNode.setAddNodeBtn(curNode.preBlock)
       }
-      // }
-      /**
-       * 递归删除当前node及其之下的node
-       */
-      this.getSubNode(curNode, null).forEach(node => {
-        removeNode(node)
-      })
-      // CANVAS_VARS.canvasEleArr.filter(x => x.nodeId === rect.nodeId).filter(x => {
-      //     arrRemove(CANVAS_VARS.canvasEleArr, x)
-      // })
-      // arrRemove(CANVAS_VARS.canvasNodeArr, getNodeById(rect.nodeId))
+      this.delNode(curNode)
     } else {
       let rectNode = getNodeById(rect.nodeId)
       let nextNode = rect.nextNode;
@@ -478,40 +477,14 @@ export class CNode {
         })
         rect.nextNode = null
       }
-      let offH = rect.height + 5
       // 移除内容块
       arrRemove(this.blockList, rect)
       getSubEles(rect, null).forEach(ele => {
         arrRemove(CANVAS_VARS.canvasEleArr, ele)
       })
-      /**
-       * 如果下方有 node, 可以将其上移
-       * 1. 正下方或右下方
-       * 2. 节点调整后的位置应该低于当前节点底部
-       * 3. 节点调整后的位置应该低于前置右中点
-       */
-      CANVAS_VARS.canvasNodeArr.filter(node => node.id !== rect.nodeId
-        && node.x >= rect.x
-        && node.y - rect.height > rectNode.y + rectNode.height
-        && node.y - rect.height >= node.preBlock.y + node.preBlock.height / 2)
-        .forEach(node => {
-          adjustNode(node, 0, rect.height)
-        })
-      // 遍历位于其下的内容块, 递归调整后继节点
-      this.blockList.forEach(block => {
-        if (block.y > rect.y) {
-          getSubEles(block).forEach(ele => {
-            ele.y -= offH
-            if (ele.nextNode) {
-              this.getSubNode(ele.nextNode, null).forEach(node => {
-                adjustNode(node, 0, Math.min(offH, node.y - node.preBlock.y))
-              })
-            }
-          })
-        }
-      })
       this.setAddBtn()
     }
+    reDrawNodeList()
   }
 
   /**
@@ -562,6 +535,7 @@ export class CNode {
       arrRemove(CANVAS_VARS.canvasEleArr, l)
       l = null
     })
+    arrRemove(CANVAS_VARS.canvasEleArr, this.fromLine)
   }
 
   /**
@@ -579,6 +553,7 @@ export class CNode {
       }
       line = this.fromLine
     }
+
     // 如果 list 有线, 置空并从元素列表和连线列表中移除(也从画面中移除了)
     if (this.listfromLine.length > 0) {
       this.listfromLine.forEach(l => {
@@ -589,6 +564,7 @@ export class CNode {
     }
     // 如果没有传前置, 则默认原则当前 node 的前置
     preEle = preEle ? preEle : this.preBlock
+
     // 连线开始端设置为前置的右中点
     line.fromP.setP(preEle.x + preEle.width, preEle.y + preEle.height / 2)
     this.fromX = preEle.x + preEle.width
@@ -627,6 +603,8 @@ export class CNode {
     }
     // 更新连线集合
     CANVAS_VARS.canvasLineArr = [...CANVAS_VARS.canvasLineArr, ...this.listfromLine]
+    line.toNode = this
+    CANVAS_VARS.canvasDirectLine.push(line)
   }
 
   /**
@@ -639,11 +617,9 @@ export class CNode {
       nodeId: this.id,
       parent: null,
       x: preBlock.x,
-      y: preBlock.y + preBlock.height + 5,
+      y: preBlock.y + preBlock.height + options.block_off,
       width: preBlock.width,
-      height: 120,
       desc: desc,
-      style: "#ffffff",
     })
     this.blockList.push(block)
     this.setText(block, block.desc)
@@ -661,5 +637,13 @@ export class CNode {
    */
   getPreBlock() {
     return this.blockList[this.blockList.length - 1]
+  }
+
+  /**
+   * 获取总高度
+   */
+  getTotalHeight(): number {
+    let blockHeight = (this.blockList.length - 1) * (options.block_h + options.block_off);
+    return this.title.height + blockHeight + options.add_btn_h
   }
 }

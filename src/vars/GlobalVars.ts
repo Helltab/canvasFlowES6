@@ -1,6 +1,7 @@
 import {CanvasList} from "../objects/CanvasList.js";
 import {CBlock} from "../objects/CBlock.js";
 import {CNode} from "../objects/CNode.js";
+import options from "../options.js";
 
 /**
  * 全局变量
@@ -14,10 +15,16 @@ export const CANVAS_VARS = {
   canvasNodeArr: new CanvasList<CNode>(null),
   // 画线数组
   canvasLineArr: [],
+  // 两点线的数组, 用于判断交叉
+  canvasDirectLine: [],
   // 节点 Id 集合
   cnodeIdSet: new Set<string>(),
   // 画布容器
   canvBox: null,
+  mapCanv: null,
+  mapCanvCtx: null,
+  mapCanvBox: null,
+
   // 真正的画布
   realCanv: null,
   // 真正的画布环境
@@ -30,16 +37,22 @@ export const CANVAS_VARS = {
   curElement: null,
   // 激活节点
   actNode: null,
+  // 第一个节点
+  rootNode: null,
+  map_pointer: undefined
+
 }
 export const COLOR_VAR = {
-  ACTIVE: 'rgb(88,226,83)', //激活状态颜色
-  LINK_BTN_BORDER: 'rgb(90,169,248)', //激活状态颜色
-  SERIAL_LINE: '#4be7e7', // 线-串行
-  MIX_LINE: '#f89696', // 线-串行
-  PARALLEL_LINE: '#e582f1', // 线-串行
-  TITLE_BG: '#ffffff',
-  BLOCK_BG: '#ffffff',
-  CANVAS_BG: '#e5e5e5',
+  ACTIVE: '#55bb8a', //激活状态颜色
+  LINK_BTN_BORDER: '#10aec2', //
+  SERIAL_LINE: '#22a2c3', // 线-串行
+  MIX_LINE: '#d2b42c', // 线-串行
+  PARALLEL_LINE: '#ad6598', // 线-串行
+  TITLE_BG: '#f5cfb8',
+  BLOCK_BG: '#eef7f2',
+  // CANVAS_BG: '#e4dfd7',
+  CANVAS_BG: '#242424',
+  ADD_BLOCK_BTN_BG: '#fff',
 }
 export const ELE_GROUP_VAR = {
   ADD_NODE_BTN: 'addNodeBtn',
@@ -52,4 +65,20 @@ export const ELE_GROUP_VAR = {
 export const RECT_TYPE = {
   TITLE: 'title',
   BLOCK: 'block',
+}
+
+export const MAP = {
+  height: 0,
+  width: 0,
+  cur_height: 0,
+  cur_width: 0,
+}
+export function getMapSize() {
+  return {
+    h: MAP.cur_height * options.mapScale,
+    w: MAP.cur_width * options.mapScale,
+  }
+}
+export function getPointerSize() {
+
 }

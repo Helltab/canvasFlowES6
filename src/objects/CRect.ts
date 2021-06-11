@@ -6,6 +6,7 @@ import {CBtn} from "./CBtn.js";
 import {CBlock} from "./CBlock.js";
 import {CANVAS_VARS} from "../vars/GlobalVars.js";
 import {CPoint} from "./CPoint.js";
+import R from "../imageResource.js";
 
 /**
  * 矩形类
@@ -31,7 +32,7 @@ export class CRect extends CanvasEle {
     x: number,
     y: number,
     width: number,
-    height: number,
+    height?: number,
     parent: CRect,
     nodeId: string,
     nextNode?: CNode,
@@ -61,6 +62,7 @@ export class CRect extends CanvasEle {
   draw() {
     CANVAS_VARS.cacheCtx.beginPath()
     CANVAS_VARS.cacheCtx.lineWidth = this.lineWidth;
+    let bg_texture = CANVAS_VARS.cacheCtx.createPattern(R.rect_bg.obj,"repeat");
     if (this.radius) {
       this.drawRoundRectPath(this.radius, this.x, this.y, this.width, this.height)
       if (this.strokeStyle) {
@@ -68,6 +70,8 @@ export class CRect extends CanvasEle {
         CANVAS_VARS.cacheCtx.stroke();
       } else {
         CANVAS_VARS.cacheCtx.fillStyle = this.style;
+        CANVAS_VARS.cacheCtx.fill();
+        CANVAS_VARS.cacheCtx.fillStyle = bg_texture;
         CANVAS_VARS.cacheCtx.fill();
       }
     } else {
@@ -78,8 +82,12 @@ export class CRect extends CanvasEle {
       } else {
         CANVAS_VARS.cacheCtx.fillStyle = this.style;
         CANVAS_VARS.cacheCtx.fillRect(this.x, this.y, this.width, this.height);
+        CANVAS_VARS.cacheCtx.fillStyle = bg_texture;
+        CANVAS_VARS.cacheCtx.fillRect(this.x, this.y, this.width, this.height);
       }
     }
+
+
 
   }
 

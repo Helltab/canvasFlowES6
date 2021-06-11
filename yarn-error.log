@@ -1,0 +1,53 @@
+Arguments: 
+  C:\Program Files\nodejs\node.exe C:\Users\helltab\AppData\Roaming\npm\node_modules\yarn\bin\yarn.js install
+
+PATH: 
+  D:\Projects\westar\Plugins\js\canvasTreeFlow_ES6\node_modules\.bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;D:\Develop\IDE\Idea\ideaIU-2020.1.1.win\bin;C:\Program Files\Java\jdk1.8.0_241\bin;C:\Program Files\TortoiseSVN\bin;C:\Program Files\nodejs\;D:\Develop\PackageManage\apache-maven-3.6.3\bin;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;D:\Chocolatey\lib\hugo\tools;C:\Program Files\Git\usr\bin;C:\Users\helltab\AppData\Local\Microsoft\WindowsApps;C:\Users\helltab\AppData\Roaming\npm;C:\tools\Cmder;
+
+Yarn version: 
+  1.22.10
+
+Node version: 
+  14.16.0
+
+Platform: 
+  win32 x64
+
+Trace: 
+  SyntaxError: D:\Projects\westar\Plugins\js\canvasTreeFlow_ES6\package.json: Unexpected token } in JSON at position 291
+      at JSON.parse (<anonymous>)
+      at C:\Users\helltab\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:1625:59
+      at Generator.next (<anonymous>)
+      at step (C:\Users\helltab\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:310:30)
+      at C:\Users\helltab\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:321:13
+
+npm manifest: 
+  {
+    "name": "canvasdemo",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "directories": {
+      "lib": "lib"
+    },
+    "dependencies": {
+      "@types/node": "^14.6.0"
+    },
+    "devDependencies": {
+      "nodemon": "^2.0.4",
+      "ts-loader": "^9.2.2",
+      "typescript": "^4.3.2",
+    },
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "build": "tsc"
+    },
+    "author": "",
+    "license": "ISC"
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

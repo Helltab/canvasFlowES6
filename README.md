@@ -6,7 +6,7 @@
 
 > 开启 typescript 自动编译, 切勿在所有项目都开启, 否则会影响其他项目
 
-![images](./docs/idea-config.png)
+![images](docs/idea-config.png)
 
 ### 添加 live-server
 

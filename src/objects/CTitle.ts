@@ -1,6 +1,7 @@
 import {CNode} from "./CNode.js";
 import {getNodeById} from "../util/canvasUtils.js";
 import {CRect} from "./CRect.js";
+import options from "../options.js";
 
 export class CTitle extends CRect {
   ifRoot: boolean; // 是否是根节点
@@ -13,6 +14,7 @@ export class CTitle extends CRect {
     args.radius = args.radius || [0, 0, 10, 10]
     super(args);
     this.desc = args.desc || '点击修改标题'
+    this.style = args.style || options.title_color
     this.ifRoot = args.ifRoot || false; // 默认 false
     Object.defineProperties(this, {
       _x: {
